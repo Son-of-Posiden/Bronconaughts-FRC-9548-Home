@@ -16,17 +16,31 @@ public class AdvancedSwerveDriveCommand extends Command {
   /** Creates a new AdvancedSwerveDriveCommand. */
   SwerveSubsystem swerve;
 
-  double targetSpeedX, targetSpeedY, targetAngle, targetSpeed, radious, turnByAngle, currentAngle, mDegrees, startingAngle = 0.0;
+  double targetSpeedX, targetSpeedY, targetHeading, turnBySeconds, targetAngle, targetSpeed, radious, turnByAngle, currentAngle, mDegrees, startingAngle, circumference = 0.0;
 
   double appliedSpeed, appliedAngle = 0.0;
 
   boolean isCircle, isMotionTest, testsFinished = false;
 
-  public AdvancedSwerveDriveCommand(SwerveSubsystem swerve, DoubleSupplier targetSpeedX, DoubleSupplier targetSpeedY, DoubleSupplier targetAngle) {
+  public AdvancedSwerveDriveCommand(SwerveSubsystem swerve, DoubleSupplier targetSpeedXIn, DoubleSupplier targetSpeedYIn, DoubleSupplier targetHeadingIn, DoubleSupplier turnBySecondsIn) {
     this.swerve = swerve;
-    this.targetSpeedX = targetSpeedX.getAsDouble();
-    this.targetSpeedY = targetSpeedY.getAsDouble();
-    this.targetAngle = targetAngle.getAsDouble();
+    this.targetSpeedX = targetSpeedXIn.getAsDouble();
+    this.targetSpeedY = targetSpeedYIn.getAsDouble();
+    this.targetHeading = targetHeadingIn.getAsDouble();
+    if (!(turnBySecondsIn == null)) {
+      this.turnBySeconds = turnBySecondsIn.getAsDouble();
+    } else {
+      this.turnBySeconds = targetHeading / Constants.SwerveDrive.maxRotationalSpeed;
+    }
+    if (turnBySeconds == 0) {
+      turnBySeconds = 1;
+    }
+
+    if (!(targetHeading == 0)) {
+      targetAngle = (((90 * targetSpeedY) / (targetSpeedY + targetSpeedX)) + (((targetHeading / 360) * 45) / turnBySeconds)) / 2;
+    } else {
+      targetAngle = ((90 * targetSpeedY) / (targetSpeedY + targetSpeedX));
+    }
 
     addRequirements(swerve);
   }
@@ -42,7 +56,7 @@ public class AdvancedSwerveDriveCommand extends Command {
 
     isCircle = true;
 
-    double circumference = (Math.PI * radious) * 2;
+    circumference = (Math.PI * radious) * 2;
     mDegrees = turnByAngle / circumference;
 
     addRequirements(swerve);
@@ -62,10 +76,17 @@ public class AdvancedSwerveDriveCommand extends Command {
   @Override
   public void execute() {
     if (isCircle) {
-      appliedAngle = ((currentAngle + (mDegrees *  targetSpeed)) + targetAngle) / 2;
+      appliedAngle = ((currentAngle + (mDegrees *  targetSpeed)) + (((targetHeading / 360) * 45) / (circumference / targetSpeed))) / 2;
+
+      swerve.setFrontLeft(appliedSpeed, ((currentAngle + (mDegrees *  targetSpeed)) + (((targetHeading / 360) * 45) / (circumference / targetSpeed))) / 2);
+      swerve.setFrontRight(appliedSpeed, ((currentAngle + (mDegrees *  targetSpeed)) + (((targetHeading / 360) * 135) / (circumference / targetSpeed))) / 2);
+      swerve.setBackLeft(appliedSpeed, ((currentAngle + (mDegrees *  targetSpeed)) + (((targetHeading / 360) * 45) / (circumference / targetSpeed))) / 2);
+      swerve.setBackRight(appliedSpeed, ((currentAngle + (mDegrees *  targetSpeed)) + (((targetHeading / 360) * 135) / (circumference / targetSpeed))) / 2);
+
+      
     } else {
       appliedSpeed = Constants.SwerveDrive.RoFtMBasedVolts(targetSpeedX + targetSpeedY) / Constants.SwerveDrive.driveMotorMaxVoltage;
-      appliedAngle = (((90 * targetSpeedY) / (targetSpeedY + targetSpeedX)) + targetAngle) / 2;
+      appliedAngle = ((90 * targetSpeedY) / (targetSpeedY + targetSpeedX));
     }
 
     if (isMotionTest) {
@@ -82,10 +103,18 @@ public class AdvancedSwerveDriveCommand extends Command {
       }
     }
 
-    swerve.setFrontLeft(appliedSpeed, appliedAngle);
-    swerve.setFrontRight(appliedSpeed, appliedAngle);
-    swerve.setBackLeft(appliedSpeed, appliedAngle);
-    swerve.setBackRight(appliedSpeed, appliedAngle);
+    if (!(targetHeading == 0)) {
+      swerve.setFrontLeft(appliedSpeed, ((((90 * targetSpeedY) / (targetSpeedY + targetSpeedX)) + (((targetHeading / 360) * 45) / turnBySeconds)) / 2));
+      swerve.setFrontRight(appliedSpeed, ((((90 * targetSpeedY) / (targetSpeedY + targetSpeedX)) + (((targetHeading / 360) * 135) / turnBySeconds)) / 2));
+      swerve.setBackLeft(appliedSpeed, ((((90 * targetSpeedY) / (targetSpeedY + targetSpeedX)) + (((targetHeading / 360) * 45) / turnBySeconds)) / 2));
+      swerve.setBackRight(appliedSpeed, ((((90 * targetSpeedY) / (targetSpeedY + targetSpeedX)) + (((targetHeading / 360) * 135) / turnBySeconds)) / 2));
+    } else {
+      swerve.setFrontLeft(appliedSpeed, appliedAngle);
+      swerve.setFrontRight(appliedSpeed, appliedAngle);
+      swerve.setBackLeft(appliedSpeed, appliedAngle);
+      swerve.setBackRight(appliedSpeed, appliedAngle);
+    }
+
   }
 
   // Called once the command ends or is interrupted.
