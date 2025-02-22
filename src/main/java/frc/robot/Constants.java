@@ -42,6 +42,8 @@ public final class Constants {
     public static final double ki = 0.0;
     public static final double kd = 0.0;
 
+    public static final double maxArmAngleWhenMoving = 120;
+
     public static final double encoderToMetersCoefficent = 0.0;
 
     public static final double slideHightFromFloor = 0.2;

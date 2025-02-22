@@ -25,8 +25,11 @@ public class LinearSlideSubsystem extends SubsystemBase {
     slideCurrent = 0.0;
   }
 
-  public void setSetpoint(double setpoint) {
-    slideSetpoint = mathExtras.codeStop(setpoint, Constants.LinearSlide.minHight, Constants.LinearSlide.maxHight);
+  public void setSetpoint(double setpoint, double armAngle) {
+    if (!(armAngle > Constants.LinearSlide.maxArmAngleWhenMoving)) {
+      slideSetpoint = mathExtras.codeStop(setpoint, Constants.LinearSlide.minHight, Constants.LinearSlide.maxHight);
+
+    }
   }
 
   @Override
