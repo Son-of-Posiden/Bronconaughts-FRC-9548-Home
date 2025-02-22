@@ -20,10 +20,11 @@ import frc.robot.subsystems.VisionSubsystem;
 import com.pathplanner.lib.auto.AutoBuilder;
 import com.pathplanner.lib.auto.NamedCommands;
 
+import edu.wpi.first.wpilibj.Joystick;
 import edu.wpi.first.wpilibj.smartdashboard.SendableChooser;
 import edu.wpi.first.wpilibj.smartdashboard.SmartDashboard;
 import edu.wpi.first.wpilibj2.command.Command;
-import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
+import edu.wpi.first.wpilibj2.command.button.JoystickButton;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
 
 /**
@@ -48,9 +49,11 @@ public class RobotContainer {
 
   double deadband = 0.2;
 
+  double turnSpeedX, turnSpeedY = 0.0;
+
   // Replace with CommandPS4Controller or CommandJoystick if needed
-  private final CommandXboxController m_driverController =
-      new CommandXboxController(OperatorConstants.kDriverControllerPort);
+  private final Joystick driverJoystick =
+      new Joystick(OperatorConstants.kDriverControllerPort);
 
   /** The container for the robot. Contains subsystems, OI devices, and commands. */
   public RobotContainer() {
@@ -58,10 +61,10 @@ public class RobotContainer {
     m_visionSubsystem.turnTowardAprilTag(m_swerveSubsystem).addRequirements(m_swerveSubsystem);
 
     m_swerveSubsystem.setDefaultCommand(m_swerveSubsystem.driveCommand(
-      ()-> mathExtras.deadband(-m_driverController.getLeftY(), deadband),
-      ()-> mathExtras.deadband(-m_driverController.getLeftX(), deadband),
-      ()-> mathExtras.deadband(-m_driverController.getRightX(), deadband),
-      ()-> mathExtras.deadband(-m_driverController.getRightY(), deadband)));
+      ()-> mathExtras.deadband(driverJoystick.getY(), deadband),
+      ()-> mathExtras.deadband(driverJoystick.getX(), deadband),
+      ()-> mathExtras.deadband(turnSpeedX, deadband),
+      ()-> mathExtras.deadband(turnSpeedY, deadband)));
 
     autoChooser = AutoBuilder.buildAutoChooser();
     SmartDashboard.putData("Auto Chooser", autoChooser);
@@ -76,33 +79,41 @@ public class RobotContainer {
     new Trigger(m_exampleSubsystem::exampleCondition)
         .onTrue(new ExampleCommand(m_exampleSubsystem));
 
-    SmartDashboard.putNumber("LeftY ", mathExtras.deadband(-m_driverController.getLeftY(), deadband));
-    SmartDashboard.putNumber("LeftX ", mathExtras.deadband(-m_driverController.getLeftX(), deadband));
-    SmartDashboard.putNumber("RightY ", mathExtras.deadband(-m_driverController.getRightY(), deadband));
-    SmartDashboard.putNumber("RightX ", mathExtras.deadband(-m_driverController.getRightX(), deadband));
+    SmartDashboard.putNumber("Joystick X ", mathExtras.deadband(driverJoystick.getX(), deadband));
+    SmartDashboard.putNumber("Joystick Y ", mathExtras.deadband(driverJoystick.getY(), deadband));
+    SmartDashboard.putNumber("Joystick Z ", mathExtras.deadband(driverJoystick.getZ(), deadband));
 
     SmartDashboard.putNumber("Limelight TX ", m_visionSubsystem.getTx());
 
     // Schedule `exampleMethodCommand` when the Xbox controller's B button is pressed,
     // cancelling on release.
 
-    m_driverController.a().whileTrue(new AdvancedSwerveDriveCommand(m_swerveSubsystem));
-    m_driverController.b().whileTrue(
-      new AdvancedSwerveDriveCommand(
-        m_swerveSubsystem,
-         ()-> m_driverController.getLeftY(),
-         ()-> m_driverController.getLeftX(),
-         ()-> m_driverController.getRightX()));
-    m_driverController.x().whileTrue(
-      new AdvancedSwerveDriveCommand(
-        m_swerveSubsystem,
-        0.25,
-        90,
-        1,
-        360,
-        ()-> m_swerveSubsystem.getCurrentAngle(),
-        m_swerveSubsystem.getCurrentAngle()));
-    m_driverController.y().whileTrue(m_visionSubsystem.moveAndAlignTowardAprilTag(m_swerveSubsystem));
+    if (driverJoystick.getPOV() == 1) {
+      turnSpeedX = 1.0;
+    } else if (driverJoystick.getPOV() == 3) {
+      turnSpeedY = 1.0;
+    } else if (driverJoystick.getPOV() == 5) { 
+      turnSpeedX = -1.0;
+    } else if (driverJoystick.getPOV() == 7) { 
+      turnSpeedY = -1.0;
+    }
+
+    new JoystickButton(driverJoystick, 1).whileTrue(new AdvancedSwerveDriveCommand(m_swerveSubsystem));
+    new JoystickButton(driverJoystick, 2).whileTrue(new AdvancedSwerveDriveCommand(
+      m_swerveSubsystem,
+       ()-> driverJoystick.getY(),
+       ()-> driverJoystick.getX(),
+       ()-> driverJoystick.getZ() * 360,
+       null));
+    new JoystickButton(driverJoystick, 3).whileTrue(new AdvancedSwerveDriveCommand(
+      m_swerveSubsystem,
+      0.25,
+      90,
+      1,
+      360,
+      ()-> m_swerveSubsystem.getCurrentAngle(),
+      m_swerveSubsystem.getCurrentAngle()));
+    new JoystickButton(driverJoystick, 4).whileTrue(m_visionSubsystem.moveAndAlignTowardAprilTag(m_swerveSubsystem));
   }
 
   /**
